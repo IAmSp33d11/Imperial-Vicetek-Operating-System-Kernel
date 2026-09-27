@@ -1,0 +1,9 @@
+limine/
+PROTOCOL.md
+qemu.log
+serial.log
+build/
+bin/
+limine/
+out/
+iso_root/
