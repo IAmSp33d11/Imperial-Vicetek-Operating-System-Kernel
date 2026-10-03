@@ -55,10 +55,7 @@ static volatile uint64_t limine_requests_end_marker[] = LIMINE_REQUESTS_END_MARK
 
 extern void enable_shit(void);
 
-// The following will be our kernel's entry point.
-// If renaming kmain() to something else, make sure to change the
-// linker script accordingly.
-void kmain(void) {
+void bootup(void) {
     // Ensure the bootloader actually understands our base revision (see spec).
     if (LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) {
         hcf();
@@ -101,14 +98,19 @@ void kmain(void) {
     }
     */
     init_serial();
-    char buffer[128];
     uint64_t ram = get_total_ram(memmap_response);
-    itoa(ram, buffer);
-    printf("Total ram in bytes: %ud\n", ram);
     enable_shit();
     double mib = bytes_to_mib(ram);
     printf("Total ram: %f MiB\n", mib);
-
+    ram = get_usable_ram(memmap_response);
+    mib = bytes_to_mib(ram);
+    printf("Usable ram: %f MiB\n", mib);
+    void *bitmap;
+    { // Force gcc to make temp go out of scope
+        uint16_t temp = 0;
+        bitmap = create_bitmap(memmap_response, hhdm, &temp);
+        finish_bitmap(memmap_response, bitmap, temp);
+    }
     // We're done, just hang...
     hcf();
 }

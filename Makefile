@@ -52,6 +52,7 @@ $(ISO_IMG): $(OUTPUT) limine
 	@./limine/limine bios-install $(ISO_IMG) 2>/dev/null
 
 limine:
+	@rm -rf limine
 	@if [ ! -d "limine" ]; then \
 		curl -L https://github.com/Limine-Bootloader/Limine/releases/latest/download/limine-binary.tar.gz | gunzip | tar -xf -; \
 		mv limine-binary/ limine; \
@@ -80,6 +81,6 @@ gdb: $(ISO_IMG)
 	gdb bin/cat_kernel.elf -ex "target remote :1234" -ex "layout asm" -ex "layout regs" 
 
 clean:
-	rm -rf bin out iso_root limine $(BUILD)
+	rm -rf bin out iso_root $(BUILD)
 
-.PHONY: all run run-kvm debug gdb clean limine
+.PHONY: all run run-kvm debug gdb clean
