@@ -25,12 +25,6 @@ static volatile struct limine_framebuffer_request framebuffer_request = {
 };
 
 __attribute__((used, section(".limine_requests")))
-static volatile struct limine_module_request module_request = {
-    .id = LIMINE_MODULE_REQUEST_ID,
-    .revision = 1
-};
-
-__attribute__((used, section(".limine_requests")))
 static volatile struct limine_hhdm_request hhdm_request = {
     .id = LIMINE_HHDM_REQUEST_ID,
     .revision = 0
@@ -69,11 +63,7 @@ void bootup(void) {
 
     // Fetch the first framebuffer.
     struct limine_framebuffer *framebuffer = framebuffer_request.response->framebuffers[0];
-
-    if (module_request.response == NULL) {
-        fill(framebuffer, 0x00FF0000);
-        hcf();
-    }
+    init_serial();
 
     // Get the HHDM
     uint64_t hhdm = hhdm_request.response->offset;
@@ -97,7 +87,7 @@ void bootup(void) {
 
     }
     */
-    init_serial();
+    
     uint64_t ram = get_total_ram(memmap_response);
     enable_shit();
     double mib = bytes_to_mib(ram);
@@ -111,6 +101,16 @@ void bootup(void) {
         bitmap = create_bitmap(memmap_response, hhdm, &temp);
         finish_bitmap(memmap_response, bitmap, temp);
     }
+
+
+    // Attempt to allocate a single page.
+    printf("Attempting to allocate a page!\nHHDM: %ux\n", hhdm);
+    void* page1 = alloc(1, false);
+    printf("We attempted to allocate a page! Got a structure located at 0x%p!\n", page1);
+
+    struct allocated_pages *out = page1;
+    
+    printf("Amount of entries: %ud\nPage[0]: 0x%ux\n", out->entry_count, out->pages[0]);
     // We're done, just hang...
     hcf();
 }
