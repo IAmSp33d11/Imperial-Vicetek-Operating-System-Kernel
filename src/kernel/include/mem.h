@@ -12,6 +12,8 @@ void finish_bitmap(struct limine_memmap_response *memmap, uint8_t *bitmap_saved,
 // Allocate/free
 void free_page(uint64_t page);
 struct allocated_pages* alloc(uint8_t page_num, bool consecutive);	
+void free(struct allocated_pages* in);
+void* alloc_page();
 
 // Structure that returns a list of pages allocated
 struct allocated_pages {

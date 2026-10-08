@@ -105,12 +105,15 @@ void bootup(void) {
 
     // Attempt to allocate a single page.
     printf("Attempting to allocate a page!\nHHDM: %ux\n", hhdm);
-    void* page1 = alloc(1, false);
+    void* page1 = alloc(100, true);
     printf("We attempted to allocate a page! Got a structure located at 0x%p!\n", page1);
 
     struct allocated_pages *out = page1;
     
-    printf("Amount of entries: %ud\nPage[0]: 0x%ux\n", out->entry_count, out->pages[0]);
+    printf("Amount of entries: %ud\n", out->entry_count);
+    for (int i = 0; i < out->entry_count; i++) {
+        printf("page[%d] = 0x%ux\n", i, out->pages[i]);
+    }
     // We're done, just hang...
     hcf();
 }

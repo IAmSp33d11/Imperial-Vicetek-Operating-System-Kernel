@@ -168,7 +168,6 @@ struct allocated_pages* alloc(uint8_t page_num, bool consecutive) {
 					break;
 				}
 			}
-			printf("Code path 1\n");
 			i += page_num;
 			if (good) {
 				set_page(bitmap, i); // Take the first page of the thing
@@ -180,11 +179,11 @@ struct allocated_pages* alloc(uint8_t page_num, bool consecutive) {
 			set_page(bitmap, i); // Take the first page of the thing
 			uint64_t physical_address = i * 4096;
 			first_page = (void*) (physical_address + hhdm);
-			printf("Code path 2\nFirst_page: 0x%p\nPhysical_address: 0x%ux\n", first_page, physical_address);
 			break;
 		}
 		i++;
 	}
+	last_page_idx = i;
 	printf("We found a page\n");
 	struct allocated_pages* out = first_page;
 	out->entry_count = page_num;
@@ -192,6 +191,52 @@ struct allocated_pages* alloc(uint8_t page_num, bool consecutive) {
 	out->pages[0] = (((uint64_t) first_page) - hhdm);
 	// We got the first page
 	printf("allocated 1 page of ram\n0x%p\n", out);
+
+	// get the other pages
+	if (page_num == 1) return out; // if they just wanted that page then just return.
+	// If it is consecutive, then we can just use a simple trick.
+	if (consecutive) {
+		for (int j = 1; j < page_num; j++) {
+			out->pages[j] = (((uint64_t) first_page) - hhdm) + (0x1000 * (j + 1)); // Add one page to the last one
+			set_page(bitmap, i + j);
+		}
+		i += page_num;
+	} else { // We have to do it the tedious way.
+		int j = 1;
+		while (true) {
+			if (j >= page_num) break;
+			if (i >= bitmap_size) {
+				if (gone_around) {
+					printf("I ate the ram.\nI'm kidding. We're out of fucking ram.\n");
+					hcf();
+				} else {
+					printf("Went around once. i = %d\nbitmap_size = %d\n", i, bitmap_size);
+					gone_around = true;
+					i = 0;
+				}
+			} else if (get_page(bitmap, i) == false) {
+				set_page(bitmap, i); // Take the oage
+				uint64_t physical_address = i * 4096;
+				out->pages[j++] = physical_address;
+				continue;
+			}
+			i++;
+		}
+	}
+
+	last_page_idx = i;
 	return out;
 }
 
+// A wrapper that allocates a singular page
+void* alloc_page() {
+	struct allocated_pages* returned = alloc_page(1, false);
+	return (uint64_t*) (returned->pages[0] + hhdm);
+}
+
+// Frees a series of pages, basically a stupid wrapper
+void free(struct allocated_pages* in) {
+	for (int i = 0; i < in->entry_count; i++) {
+		free_page(in->pages[i] / 0x1000); // Free each individual page 
+	}
+}
