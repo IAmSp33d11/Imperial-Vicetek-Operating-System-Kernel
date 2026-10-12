@@ -230,7 +230,7 @@ struct allocated_pages* alloc(uint8_t page_num, bool consecutive) {
 
 // A wrapper that allocates a singular page
 void* alloc_page() {
-	struct allocated_pages* returned = alloc_page(1, false);
+	struct allocated_pages* returned = alloc(1, false);
 	return (uint64_t*) (returned->pages[0] + hhdm);
 }
 
