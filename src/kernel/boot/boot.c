@@ -47,8 +47,8 @@ static volatile uint64_t limine_requests_end_marker[] = LIMINE_REQUESTS_END_MARK
 
 
 
-extern void enable_shit(void);
-
+extern void enable_shit(void); // src/kernel/boot/funcs.s
+extern void create_gdt(void); // src/kernel/boot/gdt.c
 void bootup(void) {
     // Ensure the bootloader actually understands our base revision (see spec).
     if (LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) {
@@ -115,6 +115,10 @@ void bootup(void) {
         printf("page[%d] = 0x%ux\n", i, out->pages[i]);
     }
     free(out);
+
+    printf("Finished testing physical memory allocator!\nCreating Global Descriptor Table!\n");
+    create_gdt();
+    printf("Successfully created GDT!\n");
     // We're done, just hang...
     hcf();
 }

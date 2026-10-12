@@ -12,7 +12,7 @@ struct GDT {
 	uint64_t base; // Ignored
 	uint8_t access_byte; // [P][DPL][DPL][S][E][DC][RW][A]
 	uint8_t flags; // 0000[G][DB][L][Reserved]
-}
+};
 
 void encode_gdt_entry(uint8_t *target, struct GDT source) {
 	// Check the limit to make sure that it can be encoded
@@ -36,6 +36,7 @@ void encode_gdt_entry(uint8_t *target, struct GDT source) {
     target[6] |= (source.flags << 4);
 }
 
+extern void set_gdt(uint16_t limit, uint64_t base);
 void create_gdt() {
 	uint8_t* target = alloc_page();
 	memset(target, 0, 0x1000); // Clear the page, and by extension, create a null segment
@@ -50,6 +51,7 @@ void create_gdt() {
     source.access_byte = 0b10010011; // 0x93 Ring 0 Data Segment
     // Long Mode
     encode_gdt_entry(target + 0x10, source);
-
+    printf("Does it work?\n");
     // TODO: Add RIngs 1, 2, and 3 here later
+    set_gdt(0x17, (uint64_t) target);
 }
