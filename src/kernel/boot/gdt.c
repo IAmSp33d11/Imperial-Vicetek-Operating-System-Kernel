@@ -44,14 +44,24 @@ void create_gdt() {
     source.limit = 0;
     source.base = 0;
 
-	source.access_byte = 0b10011011; // 0x9B Ring 0 Code segment
+	source.access_byte = 0b10011011; // 0x9B Ring 0 Code Segment
 	source.flags = 0x2; // Long Mode
 	encode_gdt_entry(target + 0x8, source);
 
     source.access_byte = 0b10010011; // 0x93 Ring 0 Data Segment
     // Long Mode
     encode_gdt_entry(target + 0x10, source);
+
+    // [P][DPL][DPL][S][E][DC][RW][A]
+    source.access_byte = 0b10111011; // 0xBB Ring 1 Code Segment 
+    // Long Mode Still
+    encode_gdt_entry(target + 0x18, source);
+
+    source.access_byte = 0b10110011; // 0xB3 Ring 1 Data Segment
+    // Long Mode, still. Wow
+    encode_gdt_entry(target + 0x20, source); 
+
     printf("Does it work?\n");
-    // TODO: Add RIngs 1, 2, and 3 here later
-    set_gdt(0x17, (uint64_t) target);
+    // TODO: Add Rings 1, 2, and 3 here later
+    set_gdt(0x27, (uint64_t) target);
 }

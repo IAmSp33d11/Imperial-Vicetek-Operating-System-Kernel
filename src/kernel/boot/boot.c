@@ -49,6 +49,7 @@ static volatile uint64_t limine_requests_end_marker[] = LIMINE_REQUESTS_END_MARK
 
 extern void enable_shit(void); // src/kernel/boot/funcs.s
 extern void create_gdt(void); // src/kernel/boot/gdt.c
+extern void idt_init(void); // src/kernel/boot/idt.c
 void bootup(void) {
     // Ensure the bootloader actually understands our base revision (see spec).
     if (LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) {
@@ -111,14 +112,17 @@ void bootup(void) {
     struct allocated_pages *out = page1;
     
     printf("Amount of entries: %ud\n", out->entry_count);
-    for (int i = 0; i < out->entry_count; i++) {
-        printf("page[%d] = 0x%ux\n", i, out->pages[i]);
-    }
     free(out);
 
     printf("Finished testing physical memory allocator!\nCreating Global Descriptor Table!\n");
     create_gdt();
-    printf("Successfully created GDT!\n");
+    printf("Successfully created GDT!\nAttempting to create IDT!\n");
+    idt_init();
+    printf("Successfully created IDT!\nTesting Division by 0!\n");
+    int x = 5;
+    x = x / 0; // Divide x by 0
+    printf("Testing x: %d\n");
+    printf("We survived!\n");
     // We're done, just hang...
     hcf();
 }

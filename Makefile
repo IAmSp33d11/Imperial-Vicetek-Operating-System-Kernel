@@ -20,8 +20,11 @@ NASMFLAGS := -f elf64 -g
 
 SRCS := $(shell find src/kernel -name '*.c')
 SRCS_GAS := $(shell find src/kernel -name '*.s')
+SRCS_NASM := $(shell find src/kernel -name '*.asm')
 OBJS := $(patsubst src/kernel/%.c, $(BUILD)/%.o, $(SRCS))
 OBJS += $(patsubst src/kernel/%.s, $(BUILD)/%.o, $(SRCS_GAS))
+OBJS += $(patsubst src/kernel/%.asm, $(BUILD)/%.o, $(SRCS_NASM))
+
 
 all: $(ISO_IMG)
 
@@ -32,6 +35,10 @@ $(BUILD)/%.o: src/kernel/%.c
 $(BUILD)/%.o: src/kernel/%.s
 	@mkdir -p $(dir $@)
 	$(CAS) $< -o $@
+
+$(BUILD)/%.o: src/kernel/%.asm
+	@mkdir -p $(dir $@)
+	$(NASM) $(NASMFLAGS) $< -o $@
 
 $(OUTPUT): $(OBJS)
 	@mkdir -p bin
