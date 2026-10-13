@@ -118,11 +118,7 @@ void bootup(void) {
     create_gdt();
     printf("Successfully created GDT!\nAttempting to create IDT!\n");
     idt_init();
-    printf("Successfully created IDT!\nTesting Division by 0!\n");
-    int x = 5;
-    x = x / 0; // Divide x by 0
-    printf("Testing x: %d\n");
-    printf("We survived!\n");
+    printf("Successfully created IDT!\n");
     // We're done, just hang...
     hcf();
 }

@@ -66,7 +66,7 @@ void idt_init() {
 __attribute__((noreturn))
 void divide_handler(void);
 void divide_handler() {
-	printf("Caught divide error!\n ...Returning!\n");
+	printf("Caught divide error in kernel!\n");
 }
 
 __attribute__((noreturn))

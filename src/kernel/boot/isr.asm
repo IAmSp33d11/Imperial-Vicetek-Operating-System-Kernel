@@ -52,9 +52,7 @@ isr_stub_%+%1:
 
 %macro divide_err 1
 isr_stub_%+%1:
-    pushaq
     call divide_handler
-    popaq
     iretq
 %endmacro
 
