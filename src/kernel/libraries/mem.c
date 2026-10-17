@@ -57,7 +57,7 @@ uint64_t get_usable_ram(struct limine_memmap_response *memmap) {
 void* create_bitmap(struct limine_memmap_response *memmap, uint64_t high, uint16_t *best_fit_used) {
 	bitmap_size = ((get_highest_usable(memmap) + 4095) / 4096);
 	uint64_t size = ((((bitmap_size + 7) / 8) + 4095) / 4096); // Gets the amount of pages we will need for the bitmap
-	printf("size = %d\nHighest usable = %d\nHighest usable in MiB = %f\n", bitmap_size, get_highest_usable(memmap), bytes_to_mib(get_highest_usable(memmap)));
+	printf("size = %dl\nHighest usable = %dl\nHighest usable in MiB = %f\n", bitmap_size, get_highest_usable(memmap), bytes_to_mib(get_highest_usable(memmap)));
 	// Find a viable place to put the bitmap
 	uint16_t best_fit = UINT16_MAX; // The entry with the best fit. Set to largest value by default
 	uint64_t best_fit_size = UINT64_MAX; // Set the best fit size to the largest value, so that the first one we find will always be better
@@ -75,11 +75,11 @@ void* create_bitmap(struct limine_memmap_response *memmap, uint64_t high, uint16
 		printf("PANIC: UNABLE TO ALLOCATE BITMAP!\nBitmap size in pages: %d\n", size);
 		hcf();
 	}
-	printf("Found a viable place to put the bitmap!\nEntry: %d\nEntry_Size (bytes): %d\nRequired_Size (bytes): %d\nEntry_Size (pages): %d\nRequired_Size (pages): %d\n", best_fit, best_fit_size, size * 4096, (best_fit_size / 4096) + 1, size);
+	printf("Found a viable place to put the bitmap!\nEntry: %udl\nEntry_Size (bytes): %udl\nRequired_Size (bytes): %udl\nEntry_Size (pages): %udl\nRequired_Size (pages): %dl\n", best_fit, best_fit_size, size * 4096, (best_fit_size / 4096) + 1, size);
 
 	// Place the bitmap and fill it with "allocated" statuses
 	uint64_t *address = (uint64_t*) (memmap->entries[best_fit]->base + high);
-	printf("Entry Address: 0x%ux\n",((uint64_t) address) - high);
+	printf("Entry Address: 0x%uxl\n",((uint64_t) address) - high);
 	for (uint64_t i = 0; i < (size * 512); i++) { // Multiply by 512 to get the amount of uint64s in it
 
 		address[i] = UINT64_MAX;
@@ -126,8 +126,9 @@ void finish_bitmap(struct limine_memmap_response *memmap, uint8_t *bitmap_saved,
 		}
 	}
 	// Re-allocate the bitmap
+	uint64_t size = ((((bitmap_size + 7) / 8) + 4095) / 4096);
 	struct limine_memmap_entry *entry = memmap->entries[used_bitmap_page];
-	for (uint64_t i = 0; i < bitmap_size; i++) { // Accidentally did +-+ and that looked like a cute face so +-+
+	for (uint64_t i = 0; i < size; i++) { // Accidentally did +-+ and that looked like a cute face so +-+
 		set_page(bitmap_saved, i + (entry->base / 4096));
 	}
 
@@ -150,13 +151,14 @@ struct allocated_pages* alloc(uint8_t page_num, bool consecutive) {
 	uint64_t i = last_page_idx;
 	bool gone_around = false;
 	void* first_page = NULL; // a pointer in the hhdm to the first page.
+	if (page_num == 0) return NULL;
 	while (true) {
 		if (i >= bitmap_size) {
 			if (gone_around) {
 				printf("I ate the ram.\nI'm kidding. We're out of fucking ram.\n");
 				hcf();
 			} else {
-				printf("Went around once. i = %d\nbitmap_size = %d\n", i, bitmap_size);
+				printf("Went around once. i = %dl\nbitmap_size = %dl\n", i, bitmap_size);
 				gone_around = true;
 				i = 0;
 			}
@@ -168,13 +170,13 @@ struct allocated_pages* alloc(uint8_t page_num, bool consecutive) {
 					break;
 				}
 			}
-			i += page_num;
+			
 			if (good) {
 				set_page(bitmap, i); // Take the first page of the thing
 				uint64_t physical_address = i * 4096;
 				first_page = (void*) physical_address + hhdm;
 				break;
-			};
+			}
 		} else if (get_page(bitmap, i) == false) {
 			set_page(bitmap, i); // Take the first page of the thing
 			uint64_t physical_address = i * 4096;
@@ -197,7 +199,7 @@ struct allocated_pages* alloc(uint8_t page_num, bool consecutive) {
 	// If it is consecutive, then we can just use a simple trick.
 	if (consecutive) {
 		for (int j = 1; j < page_num; j++) {
-			out->pages[j] = (((uint64_t) first_page) - hhdm) + (0x1000 * (j + 1)); // Add one page to the last one
+			out->pages[j] = (((uint64_t) first_page) - hhdm) + (0x1000 * (j)); // Add one page to the last one
 			set_page(bitmap, i + j);
 		}
 		i += page_num;
@@ -210,7 +212,7 @@ struct allocated_pages* alloc(uint8_t page_num, bool consecutive) {
 					printf("I ate the ram.\nI'm kidding. We're out of fucking ram.\n");
 					hcf();
 				} else {
-					printf("Went around once. i = %d\nbitmap_size = %d\n", i, bitmap_size);
+					printf("Went around once. i = %dl\nbitmap_size = %dl\n", i, bitmap_size);
 					gone_around = true;
 					i = 0;
 				}

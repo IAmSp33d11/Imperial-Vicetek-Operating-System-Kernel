@@ -111,7 +111,7 @@ void bootup(void) {
 
     struct allocated_pages *out = page1;
     
-    printf("Amount of entries: %ud\n", out->entry_count);
+    printf("Amount of entries: %udl\n", out->entry_count);
     free(out);
 
     printf("Finished testing physical memory allocator!\nCreating Global Descriptor Table!\n");
