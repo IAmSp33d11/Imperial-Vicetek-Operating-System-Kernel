@@ -27,6 +27,7 @@ double bytes_to_mib(uint64_t bytes);
 void reverse(char s[]);
 
 // and now new stuff!
-char* get_cpu_name();
+char* get_cpu_name(void);
+uint8_t get_cpl(void);
 
 #endif

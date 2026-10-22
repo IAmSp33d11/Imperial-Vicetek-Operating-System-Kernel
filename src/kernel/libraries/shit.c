@@ -211,3 +211,9 @@ char* get_cpu_name() {
     }
     return buffer;
 }
+
+uint8_t get_cpl(void) {
+    uint32_t cs;
+    __asm__ volatile ("mov %%cs, %0" : "=r"(cs));
+    return (uint8_t) cs & 0x3;
+}

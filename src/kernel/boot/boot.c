@@ -9,6 +9,7 @@
 #include <mem.h>
 #include <serial.h>
 #include <stdarg.h>
+#include <asm.h>
 
 __attribute__((used, section(".limine_requests")))
 static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(6);
@@ -144,18 +145,29 @@ void bootup(void) {
     printf("%s\n", string);
     free_addr(string);
 
+    // Before we drop into ring 0, we must do this
+    uint64_t efer = rdmsr(0xC0000080);
+    efer |= 0b1; // Set bit 0 for System Call Extensions
+    wrmsr(0xC0000080, efer);
+
+
+    // Prepare a syscall function so that way ring 1 drivers can get back here.
+
+    
+
+    printf("CPL is : %udb\n", get_cpl());
     drop_to_ring1((uint64_t) ring_1_test, rsp);
     
     bootup_cont();
 }
 
 void ring_1_test() {
-    while (true);
-    printf("We are in ring 1 successfully!\n");
+    write_serial("We are in ring 1 successfully!\n");
+    printf("CPL is : %udb\n", get_cpl());
     while (true); // Halt it since we can't use hcf() here
 }
 
 void bootup_cont(void) {
-    printf("We are not in ring 1.\nSomething fucked up.\n");
+    
     hcf();
 }
