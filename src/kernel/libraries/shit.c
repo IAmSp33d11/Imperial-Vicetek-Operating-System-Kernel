@@ -4,8 +4,11 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include <limine.h>
-#include <shit.h>
+#include <limine.h> // Included for... A reason I forgot
+#include <shit.h> // Included so gcc links this file to it
+#include <mem.h> // Included for mem management
+#include <cpuid.h> // GCC: included because I need cpuid and osdev.wiki says to use this.
+#include <serial.h> // Included for debugging.
 
 void *memcpy(void *restrict dest, const void *restrict src, size_t n) {
     uint8_t *restrict pdest = dest;
@@ -182,4 +185,29 @@ void reverse(char s[]) {
         s[i] = s[j];
         s[j] = c;
     }
+}
+
+// wastes a page, caller has to free it. I know its stupid but whatever.
+char* get_cpu_name() {
+    uint32_t eax, ebx, ecx, edx;
+    __cpuid(0x80000002, eax, ebx, ecx, edx);
+    char* buffer = alloc_page();
+    memset(buffer, 0, 4096);
+    for (int j = 0; j < 4; j++) {
+        int a = 0;
+        __cpuid(0x80000002 + j, eax, ebx, ecx, edx);
+        for (int i = 0; i < 4; i++) {
+            buffer[j * 16 + a++] = eax >> 8 * i;
+        }
+        for (int i = 0; i < 4; i++) {
+            buffer[j * 16 + a++] = ebx >> 8 * i;
+        }
+        for (int i = 0; i < 4; i++) {
+            buffer[j * 16 + a++] = ecx >> 8 * i;
+        }
+        for (int i = 0; i < 4; i++) {
+            buffer[j * 16 + a++] = edx >> 8 * i;
+        }
+    }
+    return buffer;
 }

@@ -10,6 +10,8 @@ set_gdt:
 	movw %di, gdtr
 	movq %rsi, gdtr+2
 	lgdt gdtr
+	movq $0x40, %rax
+	ltr %rax
 
 reload_segments:
 	pushq $0x08

@@ -46,10 +46,20 @@ static volatile uint64_t limine_requests_end_marker[] = LIMINE_REQUESTS_END_MARK
 
 
 
-
+extern void ring_1_call_gate_stub(void); // src/kernel/driver-handler/rings.s
 extern void enable_shit(void); // src/kernel/boot/funcs.s
-extern void create_gdt(void); // src/kernel/boot/gdt.c
+void create_gdt(uint64_t ring1_pointer); // src/kernel/boot/gdt.c
 extern void idt_init(void); // src/kernel/boot/idt.c
+extern void drop_to_ring1(uint64_t address, uint64_t target_stack); // src/test/rings.s
+
+__attribute__((noreturn))
+void bootup(void);
+__attribute__((noreturn))
+void bootup_cont(void); 
+__attribute__((noreturn))
+void ring_1_test(void); 
+
+
 void bootup(void) {
     // Ensure the bootloader actually understands our base revision (see spec).
     if (LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) {
@@ -114,11 +124,38 @@ void bootup(void) {
     printf("Amount of entries: %udl\n", out->entry_count);
     free(out);
 
+    // prepare a second stack (this will not be freed)
+    struct allocated_pages *stack = alloc(4, true);
+    if (stack == NULL) {
+        printf("Well we were unable to allocate 16KiB of consecutive memory for a stack\n");
+        hcf();
+    }
+    uint64_t rsp = stack->pages[0] + hhdm;
+    printf("%uxl\n", rsp);
+    
+    
     printf("Finished testing physical memory allocator!\nCreating Global Descriptor Table!\n");
-    create_gdt();
+    create_gdt((uint64_t) ring_1_call_gate_stub);
     printf("Successfully created GDT!\nAttempting to create IDT!\n");
     idt_init();
     printf("Successfully created IDT!\n");
-    // We're done, just hang...
+
+    char* string = get_cpu_name();
+    printf("%s\n", string);
+    free_addr(string);
+
+    drop_to_ring1((uint64_t) ring_1_test, rsp);
+    
+    bootup_cont();
+}
+
+void ring_1_test() {
+    while (true);
+    printf("We are in ring 1 successfully!\n");
+    while (true); // Halt it since we can't use hcf() here
+}
+
+void bootup_cont(void) {
+    printf("We are not in ring 1.\nSomething fucked up.\n");
     hcf();
 }

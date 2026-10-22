@@ -25,7 +25,6 @@ OBJS := $(patsubst src/kernel/%.c, $(BUILD)/%.o, $(SRCS))
 OBJS += $(patsubst src/kernel/%.s, $(BUILD)/%.o, $(SRCS_GAS))
 OBJS += $(patsubst src/kernel/%.asm, $(BUILD)/%.o, $(SRCS_NASM))
 
-
 all: $(ISO_IMG)
 
 $(BUILD)/%.o: src/kernel/%.c

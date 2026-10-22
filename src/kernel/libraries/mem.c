@@ -155,8 +155,8 @@ struct allocated_pages* alloc(uint8_t page_num, bool consecutive) {
 	while (true) {
 		if (i >= bitmap_size) {
 			if (gone_around) {
-				printf("I ate the ram.\nI'm kidding. We're out of fucking ram.\n");
-				hcf();
+				printf("I ate the ram.\nI'm kidding. We're out of fucking ram.\nReturning NULL. It's the caller's job now.\n");
+				return NULL;
 			} else {
 				printf("Went around once. i = %dl\nbitmap_size = %dl\n", i, bitmap_size);
 				gone_around = true;
@@ -209,8 +209,8 @@ struct allocated_pages* alloc(uint8_t page_num, bool consecutive) {
 			if (j >= page_num) break;
 			if (i >= bitmap_size) {
 				if (gone_around) {
-					printf("I ate the ram.\nI'm kidding. We're out of fucking ram.\n");
-					hcf();
+					printf("I ate the ram.\nI'm kidding. We're out of fucking ram.\nReturning NULL. It's the caller's job now.\n");
+					return NULL;
 				} else {
 					printf("Went around once. i = %dl\nbitmap_size = %dl\n", i, bitmap_size);
 					gone_around = true;
@@ -241,4 +241,14 @@ void free(struct allocated_pages* in) {
 	for (int i = 0; i < in->entry_count; i++) {
 		free_page(in->pages[i] / 0x1000); // Free each individual page 
 	}
+}
+
+// Another wrapper
+void free_single(uint64_t physical_address) {
+	free_page(physical_address / 0x1000);
+}
+
+// ANOTHER FUCKING WRAPPER
+void free_addr(void* hhdm_addr) {
+	free_single((uint64_t) hhdm_addr - hhdm);
 }

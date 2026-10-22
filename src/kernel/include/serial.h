@@ -27,7 +27,7 @@ static int init_serial() {
    // (not-loopback with IRQs enabled and OUT#1 and OUT#2 bits enabled)
    outb(PORT + 4, 0x0F);
 
-   write_serial("\n\n\n---ViceOS successfully loaded! Serial output is enabled!---\n");
+   write_serial("\n\n\n---Serial output is enabled!---\n");
    return 0;
 }
 

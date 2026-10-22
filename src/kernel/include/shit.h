@@ -26,4 +26,7 @@ void dtoa(double d, int precision, char *str);
 double bytes_to_mib(uint64_t bytes);
 void reverse(char s[]);
 
+// and now new stuff!
+char* get_cpu_name();
+
 #endif
