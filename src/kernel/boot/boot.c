@@ -49,9 +49,10 @@ static volatile uint64_t limine_requests_end_marker[] = LIMINE_REQUESTS_END_MARK
 
 extern void ring_1_call_gate_stub(void); // src/kernel/driver-handler/rings.s
 extern void enable_shit(void); // src/kernel/boot/funcs.s
-void create_gdt(uint64_t ring1_pointer); // src/kernel/boot/gdt.c
+void create_gdt(); // src/kernel/boot/gdt.c
 extern void idt_init(void); // src/kernel/boot/idt.c
 extern void drop_to_ring1(uint64_t address, uint64_t target_stack); // src/test/rings.s
+extern void syscall_stub(void);
 
 __attribute__((noreturn))
 void bootup(void);
@@ -136,7 +137,7 @@ void bootup(void) {
     
     
     printf("Finished testing physical memory allocator!\nCreating Global Descriptor Table!\n");
-    create_gdt((uint64_t) ring_1_call_gate_stub);
+    create_gdt();
     printf("Successfully created GDT!\nAttempting to create IDT!\n");
     idt_init();
     printf("Successfully created IDT!\n");
@@ -152,8 +153,14 @@ void bootup(void) {
 
 
     // Prepare a syscall function so that way ring 1 drivers can get back here.
-
     
+    { // Make temp go out of scope so GCC reuses its memory
+        uint64_t temp = 0x10 << 48; // Set to usermode data segment - 0x8;
+        wrmsr(0xC0000081, temp); // Set STAR msr.
+    }
+
+    wrmsr(0xC0000082, (uint64_t) syscall_stub);
+
 
     printf("CPL is : %udb\n", get_cpl());
     drop_to_ring1((uint64_t) ring_1_test, rsp);
@@ -161,8 +168,19 @@ void bootup(void) {
     bootup_cont();
 }
 
+void syscall(const char* string) {
+    __asm__ volatile (
+        "syscall"
+        :
+        : 
+        : "rcx", "r11", "memory"
+    );
+}
+
+
 void ring_1_test() {
     write_serial("We are in ring 1 successfully!\n");
+    syscall("Syscall test!\n");
     printf("CPL is : %udb\n", get_cpl());
     while (true); // Halt it since we can't use hcf() here
 }

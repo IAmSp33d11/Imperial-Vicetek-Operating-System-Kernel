@@ -3,12 +3,12 @@ CAS := x86_64-elf-as
 LD := x86_64-elf-ld
 NASM := nasm
 
-OUTPUT      := bin/vice.elf
-ISO_IMG     := out/vice.iso
-BIOS        ?= /usr/share/edk2/x64/OVMF.4m.fd
+OUTPUT := bin/vice.elf
+ISO_IMG := out/vice.iso
+BIOS ?= /usr/share/edk2/x64/OVMF.4m.fd
 BUILD := build
 
-CFLAGS  := -Wall -Wextra -O2 -std=c11 -ffreestanding -g \
+CFLAGS := -Wall -Wextra -O2 -std=c11 -ffreestanding -g \
            -fno-stack-protector -fno-stack-check -fno-lto -fno-pic -fno-pie \
            -m64 -march=x86-64 -mabi=sysv \
            -mno-red-zone \
@@ -84,7 +84,7 @@ debug: $(ISO_IMG)
 .PHONY: gdb
 gdb: $(ISO_IMG)
 	@echo "[DEBUG] Starting up GDB..."
-	gdb bin/cat_kernel.elf -ex "target remote :1234" -ex "layout asm" -ex "layout regs" 
+	gdb bin/vice.elf -ex "target remote :1234" -ex "layout asm" -ex "layout regs" 
 
 clean:
 	rm -rf bin out iso_root $(BUILD)
