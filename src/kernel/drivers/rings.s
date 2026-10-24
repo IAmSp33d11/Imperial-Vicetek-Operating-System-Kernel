@@ -2,7 +2,7 @@
 
 .section .text
 .global drop_to_ring1
-# void drop_to_ring1(uint64_t address);
+# void drop_to_ring1(uint64_t address, uint64_t rsp);
 drop_to_ring1:
 	pushfq # Push current RFLAGS
 	popq %r10 # pop into r10
@@ -12,10 +12,7 @@ drop_to_ring1:
 	popfq # put it into RFLAGs
 
 	pushq $0x31
-	pushq %rsi
-	pushq $0x29 # Push the GDT offset of ring 1 code reload_segments
-	pushq %rdi
+	pushq %rsi # Push the stack pointer
+	pushq $0x29 # Push the GDT offset of ring 1 code
+	pushq %rdi # Push the address to jump to
 	lretq
-
-.jump_to_address:
-	jmp %rdi

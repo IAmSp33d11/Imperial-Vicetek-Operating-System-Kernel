@@ -62,6 +62,8 @@ __attribute__((noreturn))
 void ring_1_test(void); 
 
 
+uint8_t cpl = 0x0; // Global CURRENT PRIVILEGE LEVEL
+
 void bootup(void) {
     // Ensure the bootloader actually understands our base revision (see spec).
     if (LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) {
@@ -79,11 +81,12 @@ void bootup(void) {
     init_serial();
 
     // Get the HHDM
-    uint64_t hhdm = hhdm_request.response->offset;
     if (hhdm_request.response == NULL) {
         fill(framebuffer, 0x00FF0000);
         hcf();
     }
+    uint64_t hhdm = hhdm_request.response->offset;
+
 
     // Get the memmap
     struct limine_memmap_response *memmap_response = memmap_request.response;
@@ -132,8 +135,9 @@ void bootup(void) {
         printf("Well we were unable to allocate 16KiB of consecutive memory for a stack\n");
         hcf();
     }
-    uint64_t rsp = stack->pages[0] + hhdm;
+    uint64_t rsp = stack->pages[0] + hhdm + 0x4000;
     printf("%uxl\n", rsp);
+    memset((uint8_t*) stack, 0, 0x4000);
     
     
     printf("Finished testing physical memory allocator!\nCreating Global Descriptor Table!\n");
@@ -155,24 +159,43 @@ void bootup(void) {
     // Prepare a syscall function so that way ring 1 drivers can get back here.
     
     { // Make temp go out of scope so GCC reuses its memory
-        uint64_t temp = 0x10 << 48; // Set to usermode data segment - 0x8;
+        uint64_t temp = 0x10LL << 48; // Set to usermode data segment - 0x8;
         wrmsr(0xC0000081, temp); // Set STAR msr.
     }
 
     wrmsr(0xC0000082, (uint64_t) syscall_stub);
+    wrmsr(0xC0000084, 1 << 9);
 
+    // Setup GS and point it to a kernel data page.
+    uint64_t* kernel_data = alloc_page(); // This will not be freed.
+    kernel_data[0] = rsp; // the stack
+    kernel_data[1] = hhdm; // the higher half direct map
+    kernel_data[2] = (uint64_t) &cpl; // The cpl. Used for syscall.
+
+
+    // write to the GS MSR. I forgot its technical name. I'll check it when I get home.
+    wrmsr(0xC0000102, (uint64_t) kernel_data);
+
+    struct allocated_pages *ring1_stack = alloc(2, true);
+    if (ring1_stack == NULL) {
+        printf("Well we were unable to allocate 8KiB of consecutive memory for a ring 1 stack\n");
+        hcf();
+    }
+    uint64_t ring1_rsp = (uint64_t) ring1_stack->pages[0] + 0x2000 + hhdm;
+    memset((uint8_t*) ring1_stack, 0, 0x2000);
 
     printf("CPL is : %udb\n", get_cpl());
-    drop_to_ring1((uint64_t) ring_1_test, rsp);
+    drop_to_ring1((uint64_t) ring_1_test, ring1_rsp);
     
     bootup_cont();
 }
 
 void syscall(const char* string) {
     __asm__ volatile (
-        "syscall"
-        :
-        : 
+        "movb %b1, (%2);"
+        "syscall;"
+        : "+a"(string)
+        : "r" (get_cpl()), "r" (&cpl)
         : "rcx", "r11", "memory"
     );
 }
