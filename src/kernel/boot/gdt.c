@@ -110,38 +110,16 @@ void create_gdt() {
     source.access_byte = 0b11111011; // 0xFB Ring 3 Code Segment
     encode_gdt_entry(target + 0x20, source);
 
-    // [P][DPL][DPL][S][E][DC][RW][A]
-    source.access_byte = 0b10111011; // 0xBB Ring 1 Code Segment 
-    // Long Mode Still
-    encode_gdt_entry(target + 0x28, source);
-
-    source.access_byte = 0b10110011; // 0xB3 Ring 1 Data Segment
-    // Long Mode, still. Wow
-    encode_gdt_entry(target + 0x30, source);
-
-    source.access_byte = 0b11011011; // 0xCB Ring 2 Code Segment
-    // Wow still long mode so interesting
-    encode_gdt_entry(target + 0x38, source);
-
-    source.access_byte = 0b11010011; // 0xC3 Ring 2 Code Segment
-    // And guess what! It's still long mode!
-    encode_gdt_entry(target + 0x40, source);
-
-    printf("Mostly GDT entries are done. Now time to do call gates!\n");
-    
-    // encode_call_gate_entry(target + 0x38, 2, ring1_pointer, 0x18);
-
-    printf("Attempting to write a TSS so that way Ring 1/2 don't kill us.\n");
+    printf("Attempting to write a TSS so that way we don't die.\n");
     memset(&tss, 0, sizeof(struct TSS_entry));
     uint64_t stack = (uint64_t) alloc_page(); // This will not be freed.
     memset((void*)stack, 0, 0x1000);
 
     tss.rsp0 = stack + 0x1000;
     tss.iomap_base = sizeof(struct TSS_entry);
-    encodeTssEntry(target + 0x48, (uint64_t)&tss);
+    encodeTssEntry(target + 0x28, (uint64_t)&tss);
 
 
     printf("Does it work?\n");
-    // TODO: Add 3 here later
-    set_gdt(0x58, (uint64_t) target);
+    set_gdt(0x38, (uint64_t) target);
 }
