@@ -59,7 +59,6 @@ void bootup_cont(void);
 
 
 
-
 void bootup(void) {
     // Ensure the bootloader actually understands our base revision (see spec).
     if (LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) {
@@ -147,20 +146,20 @@ void bootup(void) {
     free_addr(string);
 
     // Before we drop into ring 0, we must do this
-    uint64_t efer = rdmsr(0xC0000080);
+    uint64_t efer = rdmsr(0xC0000080); // IA32_EFER
     efer |= 0b1; // Set bit 0 for System Call Extensions
-    wrmsr(0xC0000080, efer);
+    wrmsr(0xC0000080, efer); // IA32_EFER
 
 
     // Prepare a syscall function so that way ring 1 drivers can get back here.
     
     { // Make temp go out of scope so GCC reuses its memory
         uint64_t temp = 0x10LL << 48; // Set to usermode data segment - 0x8;
-        wrmsr(0xC0000081, temp); // Set STAR msr.
+        wrmsr(0xC0000081, temp); // IA32_STAR
     }
 
-    wrmsr(0xC0000082, (uint64_t) syscall_stub);
-    wrmsr(0xC0000084, 1 << 9);
+    wrmsr(0xC0000082, (uint64_t) syscall_stub); // IA32_LSTAR
+    wrmsr(0xC0000084, 1 << 9); // IA32_SFMASK
 
     // Setup GS and point it to a kernel data page.
     uint64_t* kernel_data = alloc_page(); // This will not be freed.
@@ -168,11 +167,9 @@ void bootup(void) {
     kernel_data[1] = hhdm; // the higher half direct map
 
 
-    // write to the GS MSR. I forgot its technical name. I'll check it when I get home.
-    wrmsr(0xC0000102, (uint64_t) kernel_data);
+    wrmsr(0xC0000102, (uint64_t) kernel_data); // IA32_KERNEL_GS_BASE
 
-
-
+    
     
     bootup_cont();
 }
