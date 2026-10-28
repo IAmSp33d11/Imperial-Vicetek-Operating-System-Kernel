@@ -104,15 +104,32 @@ void exception_handler(registers_t* regs) {
     printf("FATAL ERROR!\nKERNEL PANIC AT VECTOR: %udl\n", regs->interrupt_number);
     if (regs->interrupt_number == 14) {
         printf("PAGE FAULT!\n");
-    } else {
-        printf("GENERAL PROTECTION FAULT!\n");
     }
     printf("ERROR CODE: 0x%uxl\nERROR AT: 0x%uxl\n", regs->error_code, regs->rip);
     if (regs->interrupt_number == 14) {
-        uint64_t cr2_val;
-        __asm__ volatile("mov %%cr2, %0" : "=r"(cr2_val));
-        printf("FAULTING ADDRESS: 0x%uxl\n", cr2_val);
+
     }
+    printf("UNRECOVERABLE STATE!\nHALTING EXECUTION!\n");
+    hcf();
+}
+
+void pf_handler(registers_t* regs) {
+    // TODO: Add some stuff that checks if it recoverable or not.
+
+    // we can't recover.
+    printf("FATAL ERROR!\nUNRECOVERABLE PAGE FAULT!\n");
+    printf("ERROR AT: 0x%uxl\n", regs->rip);
+
+    uint64_t cr2_val;
+    __asm__ volatile("mov %%cr2, %0" : "=r"(cr2_val));
+    printf("FAULTING ADDRESS: 0x%uxl\n", cr2_val);
+    printf("UNRECOVERABLE STATE!\nHALTING EXECUTION!\n");
+    hcf();
+}
+
+void gpf_handler(registers_t* regs) {
+    printf("FATAL ERROR!\nUNINTENTED GENERAL PROTECTION FAULT!\n");
+    printf("ERROR AT: 0x%uxl\n", regs->rip);
     printf("UNRECOVERABLE STATE!\nHALTING EXECUTION!\n");
     hcf();
 }

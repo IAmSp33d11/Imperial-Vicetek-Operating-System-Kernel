@@ -50,7 +50,10 @@ static volatile uint64_t limine_requests_end_marker[] = LIMINE_REQUESTS_END_MARK
 extern void enable_shit(void); // src/kernel/boot/funcs.s
 void create_gdt(); // src/kernel/boot/gdt.c
 extern void idt_init(void); // src/kernel/boot/idt.c
-extern void syscall_stub(void);
+extern void syscall_stub(void); // src/kernel/other/syscall.s
+extern int check_shit(void); // src/kernel/boot/funcs.s
+extern void enable_sse(void); // src/kernel/boot/funcs.s
+
 
 __attribute__((noreturn))
 void bootup(void);
@@ -75,6 +78,8 @@ void bootup(void) {
     struct limine_framebuffer *framebuffer = framebuffer_request.response->framebuffers[0];
     init_serial();
 
+
+
     // Get the HHDM
     if (hhdm_request.response == NULL) {
         fill(framebuffer, 0x00FF0000);
@@ -90,6 +95,10 @@ void bootup(void) {
         hcf();
     }
 
+    enable_sse();
+
+
+
     // TODO : Load init later
     /*
     for (uint64_t i = 0; i < module_request.response->module_count; i++) {
@@ -99,13 +108,6 @@ void bootup(void) {
     }
     */
     
-    uint64_t ram = get_total_ram(memmap_response);
-    enable_shit();
-    double mib = bytes_to_mib(ram);
-    printf("Total ram: %f MiB\n", mib);
-    ram = get_usable_ram(memmap_response);
-    mib = bytes_to_mib(ram);
-    printf("Usable ram: %f MiB\n", mib);
     void *bitmap;
     { // Force gcc to make temp go out of scope
         uint16_t temp = 0;
@@ -124,6 +126,36 @@ void bootup(void) {
     printf("Amount of entries: %udl\n", out->entry_count);
     free(out);
 
+
+    printf("Creating Global Descriptor Table!\n");
+    create_gdt();
+    printf("Successfully created GDT!\nAttempting to create IDT!\n");
+    idt_init();
+    printf("Successfully created IDT!\n");
+
+
+    // Make sure we support this cpu
+    int supported = check_shit();
+
+    if (supported == 1) {
+        printf("This computer is unsupported.\n");
+        fill(framebuffer, 0x0000FF00);
+        hcf(); // FUCK
+    }
+
+    // Enable our features we are gonna use
+    enable_shit();
+
+
+    uint64_t ram = get_total_ram(memmap_response);
+    
+    double mib = bytes_to_mib(ram);
+    printf("Total ram: %f MiB\n", mib);
+    ram = get_usable_ram(memmap_response);
+    mib = bytes_to_mib(ram);
+    printf("Usable ram: %f MiB\n", mib);
+
+
     // prepare a second stack (this will not be freed)
     struct allocated_pages *stack = alloc(4, true);
     if (stack == NULL) {
@@ -133,13 +165,6 @@ void bootup(void) {
     uint64_t rsp = stack->pages[0] + hhdm + 0x4000;
     printf("%uxl\n", rsp);
     memset((uint8_t*) stack, 0, 0x4000);
-    
-    
-    printf("Finished testing physical memory allocator!\nCreating Global Descriptor Table!\n");
-    create_gdt();
-    printf("Successfully created GDT!\nAttempting to create IDT!\n");
-    idt_init();
-    printf("Successfully created IDT!\n");
 
     char* string = get_cpu_name();
     printf("%s\n", string);

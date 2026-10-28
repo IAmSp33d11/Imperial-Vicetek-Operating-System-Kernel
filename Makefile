@@ -67,19 +67,18 @@ limine:
 
 .PHONY: run-kvm
 run-kvm: $(ISO_IMG)
-	@echo "[LAUNCH] Initializing ViceOS inside QEMU..."
+	@echo "[LAUNCH] Launching IV/OS inside QEMU KVM at minimum settings..."
 	qemu-system-x86_64 -m 2G -cdrom $(ISO_IMG) -bios $(BIOS) -serial file:serial.log -cpu host,host-phys-bits=on -enable-kvm
 
 .PHONY: run
 run: $(ISO_IMG)
-	@echo "[LAUNCH] Initializing ViceOS inside QEMU..."
+	@echo "[LAUNCH] Launching IV/OS inside QEMU TCG at minimum settings..."
 	qemu-system-x86_64 -m 2G -cdrom $(ISO_IMG) -bios $(BIOS) -serial file:serial.log -cpu max -no-reboot -no-shutdown -d int,cpu_reset -D qemu.log
 
 .PHONY: debug
 debug: $(ISO_IMG)
-	@echo "[DEBUG] Initializing ViceOS inside QEMU with GDB..."
+	@echo "[DEBUG] Launching IV/OS inside QEMU TCG at maximum settings with GDB..."
 	qemu-system-x86_64 -m 2G -cdrom $(ISO_IMG) -bios $(BIOS) -serial file:serial.log -s -S -cpu max -no-reboot -no-shutdown -d int,cpu_reset
-
 
 .PHONY: gdb
 gdb: $(ISO_IMG)
@@ -89,4 +88,4 @@ gdb: $(ISO_IMG)
 clean:
 	rm -rf bin out iso_root $(BUILD)
 
-.PHONY: all run run-kvm debug gdb clean
+.PHONY: all debug gdb clean

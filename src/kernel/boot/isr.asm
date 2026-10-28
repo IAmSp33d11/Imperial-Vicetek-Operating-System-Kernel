@@ -63,6 +63,30 @@ isr_stub_%+%1:
     iretq
 %endmacro
 
+%macro gp_fault 1
+isr_stub_%+%1:
+    push qword %1
+    pushaq
+    mov rdi, rsp
+    cld
+    call gpf_handler
+    popaq
+    add rsp, 16
+    iretq
+%endmacro
+
+%macro page_fault 1
+isr_stub_%+%1:
+    push qword %1
+    pushaq
+    mov rdi, rsp
+    cld
+    call pf_handler
+    popaq
+    add rsp, 16
+    iretq
+%endmacro
+
 %macro divide_err 1
 isr_stub_%+%1:
     call divide_handler
@@ -71,6 +95,8 @@ isr_stub_%+%1:
 
 extern exception_handler
 extern divide_handler
+extern gpf_handler
+extern pf_handler
 
 divide_err 0
 isr_no_err_stub 1
@@ -85,8 +111,8 @@ isr_no_err_stub 9
 isr_err_stub    10
 isr_err_stub    11
 isr_err_stub    12
-isr_err_stub    13
-isr_err_stub    14
+gp_fault    13
+page_fault    14
 isr_no_err_stub 15
 isr_no_err_stub 16
 isr_err_stub    17
