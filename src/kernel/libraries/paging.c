@@ -191,11 +191,12 @@ int map_page(uint64_t* page_map, uint64_t virt_addr, uint64_t phys_addr, uint64_
 
 
 // Returns the physical address of said page map.
-uint64_t make_page_map() {
+// Pass less stuff so we don't have to use the stack.
+uint64_t make_page_map(uint64_t* kernel_data) {
 	void* page_map = alloc_page(); // Allocate the PML4
 	memset(page_map, 0, 0x1000); // Zero it out
 	void* start_kernel = (void*) 0xffffffff80000000ULL; // I fucking ripped this outta the linker.lds file.
 	void* end_kernel = (void*) _kernel_end;
-	
+	printf("Prepare to make the page map\n");
 	
 }

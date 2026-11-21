@@ -140,7 +140,7 @@ void bootup(void) {
 
     if (supported == 1) {
         printf("This computer is unsupported.\n");
-        fill(framebuffer, 0x0000FF00);
+        fill(framebuffer, 0x0000FF00); 
         hcf(); // FUCK
     }
 
@@ -191,12 +191,22 @@ void bootup(void) {
     uint64_t* kernel_data = alloc_page(); // This will not be freed.
     kernel_data[0] = rsp; // the stack
     kernel_data[1] = hhdm; // the higher half direct map
-
+    kernel_data[2] = (uint64_t) framebuffer;
     
     wrmsr(0xC0000102, (uint64_t) kernel_data); // IA32_KERNEL_GS_BASE
     printf("Test\n");
     printf("The amount of physical address bits we have are %udb\n", check_phys_addr_size());
+
+    { // Setup PAT and in an area the compiler will reclaim.
+        uint8_t temp[8] = {6, 4, 0, 5, 6, 0, 0};
+        uint64_t val;
+        memcpy(&val, temp, 8);
+        wrmsr(0x277, val);
+    }
+    printf("We have setup PAT.\n");
+
     
+
     bootup_cont();
 }
 

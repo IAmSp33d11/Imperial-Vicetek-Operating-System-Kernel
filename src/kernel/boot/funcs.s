@@ -124,14 +124,18 @@ check_phys_addr_size:
 check_shit:
 	pushaq # Save all our registers using the macro
 
+	movl $0x1, %eax # Get the PAT value
+	cpuid
+	bt $17, %edx
+	jnc 4f
+
+
 	movl $0x0, %eax # Check if the CPU supports the highest leaf with features we check here
 	cpuid
 	cmp $0x7, %eax # Check it against 0x7
 	jnc 2f # %eax >= $0x7
 
-	popaq
-	movq $1, %rax
-	ret
+	jmp 4f
 
 2:
 	movl $0x1, %eax # Check if this supports PCID
@@ -154,9 +158,15 @@ check_shit:
 	popaq
 	
 	movq $3, %rax
+	ret
 
 0: 
 
 	popaq # restore all our registers using the macro
 	movq $0, %rax
 	ret # Return true, as in supported
+
+4:
+	popaq
+	movq $1, %rax
+	ret
