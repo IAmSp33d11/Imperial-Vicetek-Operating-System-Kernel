@@ -10,6 +10,28 @@
 
 extern uint64_t _kernel_end; // defined in linker.lds
 
+
+// We just assume that mib is a 2MiB page and split it into 512 identical 4KiB pages
+void mib_2_kib(uint64_t* mib, uint64_t* kib_level, uint16_t mib_idx) {
+	uint64_t mib_bs = mib[mib_idx];
+
+	uint64_t phys_addr = ((mib_bs >> 21) & 0x7FFFFFFFULL) << 21;
+
+	// Convert it once MOTHERFUCKERS
+	uint64_t starter = 0;
+	starter |= ((mib_bs >> 52) & 0xFFFULL) << 52; // Get the upper twelve bits
+	starter |= (mib_bs & 0b1111111ULL); // Lower 7 bits
+	starter |= ((mib_bs >> 12) & 1ULL) << 7; // PAT
+	starter |= ((mib_bs >> 8) & 0xFULL) << 8; // Put the next 4 bits
+
+	uint64_t temp = 0;
+	for (int idx = 0; idx < 512; idx++) {
+		temp = starter;
+		temp |= (phys_addr + (0x1000 * idx));
+		kib_level[idx] = temp;
+	}
+}
+
 // Sized Flags
 // 15:14 Reserved (0)
 // 13 - XD
@@ -24,11 +46,20 @@ extern uint64_t _kernel_end; // defined in linker.lds
 // 1 - R/W
 // 0 - P
 // AVL 0:9 used
-void map_page(uint64_t* page_map, uint64_t virt_addr, uint64_t phys_addr, uint64_t hhdm, uint8_t phys_addr_size, uint16_t avl, bool overwrite, uint16_t sized_flags, bool mib_2) {
+// Returns 0 if successful
+// Returns 1 if the page exists already (as 2mib)
+// Returns 2 if the page exists already (as 4kib)
+int map_page(uint64_t* page_map, uint64_t virt_addr, uint64_t phys_addr, uint64_t hhdm, uint8_t phys_addr_size, uint16_t avl, bool overwrite, uint16_t flags, bool mib_2) {
 	uint64_t mask = ((1ULL << phys_addr_size) - 1) & ~4095ULL;
+	uint64_t mib2_mask = ((1ULL << phys_addr_size) - 1) & ~0x1FFFFFULL;
 
-	if (phys_addr & mask != phys_addr) { // Make sure its not out of range and the CPU actually supports it.
-		printf("Kernel Panic: Attempted to map out of range physical address 0x%uxl to virtual address 0x%uxl!\nCPU supports %udb bits!\nMask used to check: 0x%uxl\n", phys_addr, virt_addr, phys_addr_size, mask);
+
+	if ((phys_addr & (mib_2 ? mib2_mask : mask)) != phys_addr) { // Make sure its not out of range and the CPU actually supports it.
+		printf("Kernel Panic: Attempted to map out of range physical address 0x%uxl to virtual address 0x%uxl!\nCPU supports %udb bits!\nMask used to check: 0x%uxl\n", phys_addr, virt_addr, phys_addr_size, (mib_2) ? mib2_mask : mask);
+		hcf();
+	}
+	if ((virt_addr & (mib_2 ? ~0x1FFFFFULL : ~4095ULL)) != virt_addr) {
+		printf("Kernel Panic: Attempted to map physical address 0x%uxl to unaligned virtual address 0x%uxl!\nAttempted to map a %s page!\n", phys_addr, virt_addr, (mib_2) ? "2 MiB" : "4 KiB");
 		hcf();
 	}
 
@@ -48,23 +79,19 @@ void map_page(uint64_t* page_map, uint64_t virt_addr, uint64_t phys_addr, uint64
 	uint64_t idx = (virt_addr >> 39) & 0x1FF;
 
 	uint64_t* pdpte;
-	if (overwrite || !(page_map[idx] & 1)) { // If the present bit is set, or we want to overwrite, then
+	if (!(page_map[idx] & 1)) { // If the present bit is set, then
 		// Allocate the pdpte
-		if (!(page_map[idx] & 1)) {
-			pdpte = alloc_page();
-			if (pdpte == NULL) {
-				printf("We fucked up.\nPDPTE\n");
-				hcf();
-			}
-			memset(pdpte, 0, 0x1000);
-		} else {
-			pdpte = (uint64_t*) ((page_map[idx] & mask) + hhdm);
+		pdpte = alloc_page();
+		if (pdpte == NULL) {
+			printf("We fucked up.\nPDPTE\n");
+			hcf();
 		}
+		memset(pdpte, 0, 0x1000);
+
 
 		uint64_t pdpte_phys = (uint64_t)pdpte - hhdm;
 		uint64_t temp = 0;
 		temp |= pdpte_phys; // Set the phys address of pdpte
-		temp |= (0) << 63; // Set XD
 		temp |= 0b111; // Set Present, RW, and User to make it the most permissive.
 		page_map[idx] = temp;
 	} else { // Otherwise, we just grab the existing one
@@ -74,30 +101,25 @@ void map_page(uint64_t* page_map, uint64_t virt_addr, uint64_t phys_addr, uint64
 	idx = (virt_addr >> 30) & 0x1FF;
 
 	uint64_t* pde;
-	if (overwrite || !(pdpte[idx] & 1)) { // If the present bit is set, or we want to overwrite, then
+	if (!(pdpte[idx] & 1)) { // If the present bit is set, then
 		// Allocate the pde
-		if (!(pdpte[idx] & 1)) {
-			pde = alloc_page();
-			if (pde == NULL) {
-				printf("We fucked up.\nPDEn\n");
-				hcf();
-			}
-			memset(pde, 0, 0x1000);
-		} else {
-			pde = (uint64_t*) ((pdpte[idx] & mask) + hhdm);
-			
+		pde = alloc_page();
+		if (pde == NULL) {
+			printf("We fucked up.\nPDE\n");
+			hcf();
 		}
+		memset(pde, 0, 0x1000);
+
 
 		uint64_t pde_phys = (uint64_t)pde - hhdm;
 		uint64_t temp = 0;
 		temp |= pde_phys; // Set the phys address of pdpte
-		temp |= (0) << 63; // Set XD
 		temp |= 0b111; // Set Present, RW, and User to make it the most permissive.
 		pdpte[idx] = temp;
 	} else { // Otherwise, we just grab the existing one
 		pde = (uint64_t*) ((pdpte[idx] & mask) + hhdm);
 	}
-
+	idx = (virt_addr >> 21) & 0x1FF;
 
 	if (mib_2) {
 		if (overwrite || !(pde[idx] & 1)) {
@@ -105,21 +127,75 @@ void map_page(uint64_t* page_map, uint64_t virt_addr, uint64_t phys_addr, uint64
 			temp |= phys_addr; // Set the physical address of the page.
 			temp |= ((flags >> 13) & 1ULL) << 63; // Set XD
 			temp |= (flags & 0b1111111); // Set the lower 7 flags
-			temp |= 1 << 8; // Tell the CPU this is a 2MiB page.
+			temp |= 1ULL << 7; // Tell the CPU this is a 2MiB page.
 			temp |= ((flags >> 8) & 1ULL) << 8; // Set the Global Bit
-			temp |= ((flags >> 9) & 3ULL) << 59; // Set the Protection Key or whatever
+			temp |= ((flags >> 9) & 0xFULL) << 59; // Set the Protection Key or whatever
 			temp |= ((flags >> 7) & 1ULL) << 12; // Set the PAT Bit
+			temp |= (avl & 0b111ULL) << 9; // Lower AVL
+			temp |= ((avl >> 3) & 0b1111111ULL) << 52; // Higher AVL
+			pde[idx] = temp;
+			return 0;
 		}
-		return;
+		return 1;
 	}
 
-	
 
-	return;
+	uint64_t* pte;
+	if (!(pde[idx] & 1) ||  (((pde[idx] >> 7) & 1) && (pde[idx] & 1))) { // If the present bit is set, then
+		// Allocate the pte
+
+		pte = alloc_page();
+		if (pte == NULL) {
+			printf("We fucked up.\nPTE\n");
+			hcf();
+		}
+		
+
+		if ((pde[idx] >> 7) & 1) { // If its a 2MiB page
+			if (overwrite) {
+				mib_2_kib(pde, pte, idx);
+			} else {
+				free_addr(pte);
+				return 1; // If the caller doesn't want us overwriting stuff, then fuck are we supposed to do?!
+			}
+		} else {
+			memset(pte, 0, 0x1000);
+		}
+
+
+		uint64_t pte_phys = (uint64_t)pte - hhdm;
+		uint64_t temp = 0;
+		temp |= pte_phys; // Set the phys address of pde
+		temp |= 0b111; // Set Present, RW, and User to make it the most permissive.
+		pde[idx] = temp;
+	} else { // Otherwise, we just grab the existing one
+		pte = (uint64_t*) ((pde[idx] & mask) + hhdm);
+	}
+	idx = (virt_addr >> 12) & 0x1FF;
+
+	if (overwrite || !(pte[idx] & 1)) {
+		uint64_t temp = 0;
+		temp |= phys_addr; // Set the physical address
+		temp |= ((flags >> 13) & 1ULL) << 63; // Set XD
+		temp |= (flags & 0b111111111); // Set the lower flags (9 of them)
+		temp |= (avl & 0b111ULL) << 9; // Lower AVL
+		temp |= ((avl >> 3) & 0b1111111ULL) << 52; // Higher AVL
+		temp |= ((flags >> 9) & 0xFULL) << 59; // Set the Protection Key or whatever
+		pte[idx] = temp;
+		return 0;
+	}
+
+	return 2;
 }
+
+
 
 // Returns the physical address of said page map.
 uint64_t make_page_map() {
 	void* page_map = alloc_page(); // Allocate the PML4
 	memset(page_map, 0, 0x1000); // Zero it out
+	void* start_kernel = (void*) 0xffffffff80000000ULL; // I fucking ripped this outta the linker.lds file.
+	void* end_kernel = (void*) _kernel_end;
+	
+	
 }
