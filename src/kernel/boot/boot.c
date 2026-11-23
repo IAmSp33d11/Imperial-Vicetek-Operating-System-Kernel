@@ -37,6 +37,12 @@ static volatile struct limine_memmap_request memmap_request = {
     .revision = 4
 };
 
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_executable_address_request addr_request = {
+    .id = LIMINE_EXECUTABLE_ADDRESS_REQUEST_ID,
+    .revision = 0
+};
+
 
 
 __attribute__((used, section(".limine_requests_start")))
@@ -138,8 +144,8 @@ void bootup(void) {
     // Make sure we support this cpu
     int supported = check_shit();
 
-    if (supported == 1) {
-        printf("This computer is unsupported.\n");
+    if (supported != 1) {
+        printf("This computer is unsupported, for one reason or another.\n");
         fill(framebuffer, 0x0000FF00); 
         hcf(); // FUCK
     }
@@ -174,7 +180,8 @@ void bootup(void) {
 
     // Stuff for ring 3
     uint64_t efer = rdmsr(0xC0000080); // IA32_EFER
-    efer |= 0b1; // Set bit 0 for System Call Extensions
+    efer |= 0b1; // Set bit 0 for Syscall
+    efer |= (0b1 << 11); // Set bit 11 for XD
     wrmsr(0xC0000080, efer); // IA32_EFER
 
 
@@ -186,16 +193,27 @@ void bootup(void) {
 
     wrmsr(0xC0000082, (uint64_t) syscall_stub); // IA32_LSTAR
     wrmsr(0xC0000084, 1 << 9); // IA32_SFMASK
-
+    printf("Setup GS\n");
     // Setup GS and point it to a kernel data page.
     uint64_t* kernel_data = alloc_page(); // This will not be freed.
     kernel_data[0] = rsp; // the stack
     kernel_data[1] = hhdm; // the higher half direct map
-    kernel_data[2] = (uint64_t) framebuffer;
+    kernel_data[2] = (uint64_t) framebuffer; // pointer to the framebuffer
+    kernel_data[3] = (uint64_t) memmap_response; // Pointer to the memory map
+
+    // Get the physical address of the kernel
+
+    if (addr_request.response != NULL) {
+        kernel_data[4] = addr_request.response->physical_base;
+    } else {
+        printf("Somehow addr_request is null so wtf.\n");
+        hcf();
+    }
+    
     
     wrmsr(0xC0000102, (uint64_t) kernel_data); // IA32_KERNEL_GS_BASE
-    printf("Test\n");
     printf("The amount of physical address bits we have are %udb\n", check_phys_addr_size());
+    kernel_data[5] = check_phys_addr_size;
 
     { // Setup PAT and in an area the compiler will reclaim.
         uint8_t temp[8] = {6, 4, 0, 5, 6, 0, 0};

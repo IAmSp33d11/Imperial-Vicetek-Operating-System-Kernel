@@ -7,8 +7,8 @@
 #include <shit.h> // Included for hcf and shit
 #include <mem.h> // Included for allocating a 4KiB page for the page map.
 #include <paging.h> // Included cause that's what this is for.
+#include <limine.h> // Included for the setup paging function.
 
-extern uint64_t _kernel_end; // defined in linker.lds
 
 
 // We just assume that mib is a 2MiB page and split it into 512 identical 4KiB pages
@@ -190,13 +190,58 @@ int map_page(uint64_t* page_map, uint64_t virt_addr, uint64_t phys_addr, uint64_
 
 
 
+
+/* All the bs that's in the linker.lds file*/
+extern uint64_t _limine_requests; /* The Limine Requests, Duh*/
+extern uint64_t _text; /* Our Code, Comrade. */
+extern uint64_t _rodata; /* Hey you can only read this, no touchy. */
+extern uint64_t _note_gnu_build_id; /* What? Its read only tho */
+extern uint64_t _data; /* Read and Write I think? */
+extern uint64_t _bss; /* UNITIAILIZED :3 */
+extern uint64_t _kernel_end; /* The end of the kernel */
+/* Nothing else */
+
+
 // Returns the physical address of said page map.
 // Pass less stuff so we don't have to use the stack.
 uint64_t make_page_map(uint64_t* kernel_data) {
 	void* page_map = alloc_page(); // Allocate the PML4
 	memset(page_map, 0, 0x1000); // Zero it out
-	void* start_kernel = (void*) 0xffffffff80000000ULL; // I fucking ripped this outta the linker.lds file.
-	void* end_kernel = (void*) _kernel_end;
-	printf("Prepare to make the page map\n");
+	printf("Preparing to make the page map\n");
 	
+	// Fun fact, the framebuffer is in the HHDM!
+	struct limine_memmap_response *memmap = (void*) kernel_data[3];
+
+	uint64_t hhdm_offset = kernel_data[1]; // The offset to the HHDM
+
+	printf("Mapping the kernel elf segments\n");
+	printf("Mapping Limine Requests segments\n");
+	for (uint64_t i = _limine_requests; i < _text; i += 4096) {
+		map_page(page_map, i, i - kernel_data[4], hhdm, kernel_data[5], 0, true, 0b0010000000000001); // XD and P set (Read only No Execute)
+	}
+	printf("Mapping Text segments\n");
+	for (uint64_t i = _text; i < _rodata; i += 4096) {
+		map_page(page_map, i, i - kernel_data[4], hhdm, kernel_data[5], 0, true, 0b1); // We literally just need P set. (Read Only Execute)
+	}
+	printf("Mapping read only data segments.\n");
+	for (uint64_t i = _rodata; i< _note_gnu_build_id; i+= 4096) {
+		map_page(page_map, i, i - kernel_data[4], hhdm, kernel_data[5], 0, true, 0b0010000000000001); // XD and P set (Read Only No Execute)
+	}
+	printf("Mapping whatever the fuck the \".note.gnu.build.id\" is in our ELF.\n");
+	for (uint64_t i = _note_gnu_build_id; i < _data; i+= 4096) {
+		map_page(page_map, i, i - kernel_data[4], hhdm, kernel_data[5], 0, true, 0b0010000000000001); // XD and P set (Read Only No Execute)
+	}
+	printf("Mapping data segments\n");
+	for (uint64_t i = _data; i < _bss; i += 4096) {
+		map_page(page_map, i, i - kernel_data[4], hhdm, kernel_data[5], 0, true, 0b0010000000000011); // XD, P and RW set (RW No Execute)
+	}
+	printf("Mapping the bss\n");
+	for (uint64_t i = _bss; i < _kernel_end; i += 4096) {
+		map_page(page_map, i, i - kernel_data[4], hhdm, kernel_data[5], 0, true, 0b0010000000000011); // XD, P and RW set (RW No Execute)
+	}
+
+	printf("Mapping the stuff we find in the memmap!\n");
+	for (uint64_t i = 0; i < memmap->entry_count; i++) {
+		
+	}
 }

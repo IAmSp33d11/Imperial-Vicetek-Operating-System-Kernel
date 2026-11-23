@@ -129,6 +129,9 @@ check_shit:
 	bt $17, %edx
 	jnc 4f
 
+	bt $20, %edx # Check XD
+	jnc 4f
+
 
 	movl $0x0, %eax # Check if the CPU supports the highest leaf with features we check here
 	cpuid

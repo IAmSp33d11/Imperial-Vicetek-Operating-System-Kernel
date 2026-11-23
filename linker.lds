@@ -24,35 +24,38 @@ SECTIONS
     . = 0xffffffff80000000;
 
     /* Define a section to contain the Limine requests and assign it to its own PHDR */
+    . = ALIGN(4096);
+    _limine_requests = .;
     .limine_requests : {
         KEEP(*(.limine_requests_start))
         KEEP(*(.limine_requests))
         KEEP(*(.limine_requests_end))
     } :limine_requests
 
-    /* Move to the next memory page for .text */
-    . = ALIGN(CONSTANT(MAXPAGESIZE));
-
+    . = ALIGN(4096);
+    _text = .;
     .text : {
         *(.text .text.*)
     } :text
 
-    /* Move to the next memory page for .rodata */
-    . = ALIGN(CONSTANT(MAXPAGESIZE));
 
+    . = ALIGN(4096);
+    _rodata = .;
     .rodata : {
         *(.rodata .rodata.*)
     } :rodata
 
     /* Add a .note.gnu.build-id output section in case a build ID flag is added to the */
     /* linker command. */
+    . = ALIGN(4096);
+    _note_gnu_build_id = .;
     .note.gnu.build-id : {
         *(.note.gnu.build-id)
     } :rodata
 
-    /* Move to the next memory page for .data */
-    . = ALIGN(CONSTANT(MAXPAGESIZE));
-
+    /* I'm aligning everything to page bounardies since I do not fucking like having things cross page boundaries if its possible to avoid that. */
+    . = ALIGN(4096);
+    _data = .;
     .data : {
         *(.data .data.*)
     } :data
@@ -61,6 +64,8 @@ SECTIONS
     /* unnecessary zeros will be written to the binary. */
     /* If you need, for example, .init_array and .fini_array, those should be placed */
     /* above this. */
+    . = ALIGN(4096);
+    _bss = .;
     .bss : {
         *(.bss .bss.*)
         *(COMMON)
