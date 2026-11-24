@@ -261,7 +261,7 @@ void* make_page_map(uint64_t* kernel_data) {
 						map_page(page_map, (j / 4096) * 4096 + hhdm_offset + memmap->entries[i]->base, (j / 4096) * 4096 + memmap->entries[i]->base, hhdm_offset, kernel_data[5], 0, true, 0b0010000100010011, false); // XD, G, RW, P
 						break;
 					case LIMINE_MEMMAP_FRAMEBUFFER:
-						map_page(page_map, (j / 4096) * 4096 + hhdm_offset + memmap->entries[i]->base, (j / 4096) * 4096 + memmap->entries[i]->base, hhdm_offset, kernel_data[5], 0, true, 0b0010000110011011, false); // XD, G, PAT (idx 5, WC), RW, P
+						map_page(page_map, (j / 4096) * 4096 + hhdm_offset + memmap->entries[i]->base, (j / 4096) * 4096 + memmap->entries[i]->base, hhdm_offset, kernel_data[5], 0, true, 0b0010000110001011, false); // XD, G, PAT (idx 5, WC), RW, P
 						break;
 					case LIMINE_MEMMAP_EXECUTABLE_AND_MODULES:
 						map_page(page_map, (j / 4096) * 4096 + hhdm_offset + memmap->entries[i]->base, (j / 4096) * 4096 + memmap->entries[i]->base, hhdm_offset, kernel_data[5], 0, true, 0b0010000100010001, false); // XD, G, P 
