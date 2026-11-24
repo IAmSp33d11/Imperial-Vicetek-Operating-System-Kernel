@@ -192,19 +192,25 @@ int map_page(uint64_t* page_map, uint64_t virt_addr, uint64_t phys_addr, uint64_
 
 
 /* All the bs that's in the linker.lds file*/
-extern uint64_t _limine_requests; /* The Limine Requests, Duh*/
-extern uint64_t _text; /* Our Code, Comrade. */
-extern uint64_t _rodata; /* Hey you can only read this, no touchy. */
-extern uint64_t _note_gnu_build_id; /* What? Its read only tho */
-extern uint64_t _data; /* Read and Write I think? */
-extern uint64_t _bss; /* UNITIAILIZED :3 */
-extern uint64_t _kernel_end; /* The end of the kernel */
+extern uint8_t _limine_requests[]; /* The Limine Requests, Duh*/
+extern uint8_t _text[]; /* Our Code, Comrade. */
+extern uint8_t _rodata[]; /* Hey you can only read this, no touchy. */
+extern uint8_t _note_gnu_build_id[]; /* What? Its read only tho */
+extern uint8_t _data[]; /* Read and Write I think? */
+extern uint8_t _bss[]; /* UNITIAILIZED :3 */
+extern uint8_t _kernel_end[]; /* The end of the kernel */
+extern uint8_t _kernel_start[]; /* The start of the kernel */
 /* Nothing else */
 
 
-// Returns the physical address of said page map.
+void switch_page_map(uint64_t* new_map, uint64_t hhdm_offset) {
+    uint64_t* phys_val = (uint64_t*) (((uint64_t) new_map) - hhdm_offset);
+    set_cr3(phys_val);
+}
+
+// Returns the virtual address of said page map.
 // Pass less stuff so we don't have to use the stack.
-uint64_t make_page_map(uint64_t* kernel_data) {
+void* make_page_map(uint64_t* kernel_data) {
 	void* page_map = alloc_page(); // Allocate the PML4
 	memset(page_map, 0, 0x1000); // Zero it out
 	printf("Preparing to make the page map\n");
@@ -213,35 +219,61 @@ uint64_t make_page_map(uint64_t* kernel_data) {
 	struct limine_memmap_response *memmap = (void*) kernel_data[3];
 
 	uint64_t hhdm_offset = kernel_data[1]; // The offset to the HHDM
+	uint64_t kernel_offset = (uint64_t) &_kernel_start;
+
+	printf("%uxl\n", (uint64_t) &_limine_requests);
 
 	printf("Mapping the kernel elf segments\n");
 	printf("Mapping Limine Requests segments\n");
-	for (uint64_t i = _limine_requests; i < _text; i += 4096) {
-		map_page(page_map, i, i - kernel_data[4], hhdm, kernel_data[5], 0, true, 0b0010000000000001); // XD and P set (Read only No Execute)
+	for (uint64_t i = (uint64_t) &_limine_requests; i < (uint64_t) &_text; i += 4096) {
+		map_page(page_map, i, i - kernel_offset + kernel_data[4], hhdm_offset, kernel_data[5], 0, true, 0b0010000000000001, false); // XD and P set (Read only No Execute)
 	}
 	printf("Mapping Text segments\n");
-	for (uint64_t i = _text; i < _rodata; i += 4096) {
-		map_page(page_map, i, i - kernel_data[4], hhdm, kernel_data[5], 0, true, 0b1); // We literally just need P set. (Read Only Execute)
+	for (uint64_t i = (uint64_t) &_text; i < (uint64_t) &_rodata; i += 4096) {
+		map_page(page_map, i, i - kernel_offset + kernel_data[4], hhdm_offset, kernel_data[5], 0, true, 0b1, false); // We literally just need P set. (Read Only Execute)
 	}
 	printf("Mapping read only data segments.\n");
-	for (uint64_t i = _rodata; i< _note_gnu_build_id; i+= 4096) {
-		map_page(page_map, i, i - kernel_data[4], hhdm, kernel_data[5], 0, true, 0b0010000000000001); // XD and P set (Read Only No Execute)
+	for (uint64_t i = (uint64_t) &_rodata; i< (uint64_t) &_note_gnu_build_id; i+= 4096) {
+		map_page(page_map, i, i - kernel_offset + kernel_data[4], hhdm_offset, kernel_data[5], 0, true, 0b0010000000000001, false); // XD and P set (Read Only No Execute)
 	}
 	printf("Mapping whatever the fuck the \".note.gnu.build.id\" is in our ELF.\n");
-	for (uint64_t i = _note_gnu_build_id; i < _data; i+= 4096) {
-		map_page(page_map, i, i - kernel_data[4], hhdm, kernel_data[5], 0, true, 0b0010000000000001); // XD and P set (Read Only No Execute)
+	for (uint64_t i = (uint64_t) &_note_gnu_build_id; i < (uint64_t) &_data; i+= 4096) {
+		map_page(page_map, i, i - kernel_offset + kernel_data[4], hhdm_offset, kernel_data[5], 0, true, 0b0010000000000001, false); // XD and P set (Read Only No Execute)
 	}
-	printf("Mapping data segments\n");
-	for (uint64_t i = _data; i < _bss; i += 4096) {
-		map_page(page_map, i, i - kernel_data[4], hhdm, kernel_data[5], 0, true, 0b0010000000000011); // XD, P and RW set (RW No Execute)
+	printf("Mapping data segments %udl\n", _bss - _data);
+	for (uint64_t i = (uint64_t) &_data; i < (uint64_t) &_bss; i += 4096) {
+		map_page(page_map, i, i - kernel_offset + kernel_data[4], hhdm_offset, kernel_data[5], 0, true, 0b0010000000000011, false); // XD, P and RW set (RW No Execute)
 	}
-	printf("Mapping the bss\n");
-	for (uint64_t i = _bss; i < _kernel_end; i += 4096) {
-		map_page(page_map, i, i - kernel_data[4], hhdm, kernel_data[5], 0, true, 0b0010000000000011); // XD, P and RW set (RW No Execute)
+	printf("Mapping the bss %udl\n", _kernel_end - _bss);
+	for (uint64_t i = (uint64_t) &_bss; i < (uint64_t) &_kernel_end; i += 4096) {
+		map_page(page_map, i, i - kernel_offset + kernel_data[4], hhdm_offset, kernel_data[5], 0, true, 0b0010000000000011, false); // XD, P and RW set (RW No Execute)
 	}
 
 	printf("Mapping the stuff we find in the memmap!\n");
 	for (uint64_t i = 0; i < memmap->entry_count; i++) {
-		
+		if (memmap->entries[i]->type != LIMINE_MEMMAP_BAD_MEMORY &&
+			memmap->entries[i]->type != LIMINE_MEMMAP_RESERVED) {
+			
+			printf("Mapping a segment in memory starting at %uxl with length %udl!\n", memmap->entries[i]->base, memmap->entries[i]->length);
+			for (uint64_t j = 0; j < memmap->entries[i]-> length; j += 4096) {
+				switch (memmap->entries[i]->type) {
+					case LIMINE_MEMMAP_RESERVED_MAPPED:
+						map_page(page_map, (j / 4096) * 4096 + hhdm_offset + memmap->entries[i]->base, (j / 4096) * 4096 + memmap->entries[i]->base, hhdm_offset, kernel_data[5], 0, true, 0b0010000100000011, false); // XD, G, RW, P
+						break;
+					case LIMINE_MEMMAP_FRAMEBUFFER:
+						map_page(page_map, (j / 4096) * 4096 + hhdm_offset + memmap->entries[i]->base, (j / 4096) * 4096 + memmap->entries[i]->base, hhdm_offset, kernel_data[5], 0, true, 0b0010000110001011, false); // XD, G, PAT (idx 5, WC), RW, P
+						break;
+					case LIMINE_MEMMAP_EXECUTABLE_AND_MODULES:
+						map_page(page_map, (j / 4096) * 4096 + hhdm_offset + memmap->entries[i]->base, (j / 4096) * 4096 + memmap->entries[i]->base, hhdm_offset, kernel_data[5], 0, true, 0b0010000100000001, false); // XD, G, P 
+						break;
+					default:
+						map_page(page_map, (j / 4096) * 4096 + hhdm_offset + memmap->entries[i]->base, (j / 4096) * 4096 + memmap->entries[i]->base, hhdm_offset, kernel_data[5], 0, true, 0b0010000100000011, false); // XD, G, RW, P
+						break;
+				}
+			}
+		} else {
+			continue;
+		}
 	}
+	return page_map;
 }

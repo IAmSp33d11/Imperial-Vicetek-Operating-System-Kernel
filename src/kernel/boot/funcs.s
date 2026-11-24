@@ -173,3 +173,9 @@ check_shit:
 	popaq
 	movq $1, %rax
 	ret
+
+.global set_cr3
+# void set_cr3(uint64_t* val)
+set_cr3:
+    mov %rdi, %cr3
+    ret

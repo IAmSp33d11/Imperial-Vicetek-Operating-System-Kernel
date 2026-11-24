@@ -86,8 +86,8 @@ void printf(char *string, ...) {
 				write_serial(buffer);
 			} else if (current_char == 'u') { // Unsigned ones!
 				current_char = string[i++];
-					if (current_char == 'x') {
-						current_char = string[i++];
+				if (current_char == 'x') {
+					current_char = string[i++];
 					if (current_char == 'l') {
 						uint64_t val = va_arg(args, uint64_t);
 						char buffer[128];
@@ -114,22 +114,22 @@ void printf(char *string, ...) {
 					if (current_char == 'l') {
 						uint64_t val = va_arg(args, uint64_t);
 						char buffer[128];
-						sitoa(val, buffer);
+						itoa(val, buffer);
 						write_serial(buffer);
 					} else if (current_char == 'i') {
 						uint32_t val = va_arg(args, uint32_t);
 						char buffer[128];
-						sitoa(val, buffer);
+						itoa(val, buffer);
 						write_serial(buffer);
 					} else if (current_char == 's') {
 						uint16_t val = (uint16_t) va_arg(args, uint32_t);
 						char buffer[128];
-						sitoa(val, buffer);
+						itoa(val, buffer);
 						write_serial(buffer);
 					} else if (current_char == 'b') {
 						uint8_t val = (uint8_t) va_arg(args, uint32_t);
 						char buffer[128];
-						sitoa(val, buffer);
+						itoa(val, buffer);
 						write_serial(buffer);
 					}
 				}

@@ -158,7 +158,7 @@ struct allocated_pages* alloc(uint8_t page_num, bool consecutive) {
 				printf("I ate the ram.\nI'm kidding. We're out of fucking ram.\nReturning NULL. It's the caller's job now.\n");
 				return NULL;
 			} else {
-				printf("Went around once. i = %dl\nbitmap_size = %dl\n", i, bitmap_size);
+				// printf("Went around once. i = %dl\nbitmap_size = %dl\n", i, bitmap_size);
 				gone_around = true;
 				i = 0;
 			}
@@ -186,14 +186,15 @@ struct allocated_pages* alloc(uint8_t page_num, bool consecutive) {
 		i++;
 	}
 	last_page_idx = i;
-	printf("We found a page\n");
+	
+	// printf("We found a page\n");
 	struct allocated_pages* out = first_page;
 	out->entry_count = page_num;
 	out->pages = (uint64_t*) (((uint64_t*) first_page) + 8); // Set it as the bytes right after entry_count
 	out->pages[0] = (((uint64_t) first_page) - hhdm);
 	// We got the first page
-	printf("allocated 1 page of ram\n0x%p\n", out);
-
+	// printf("allocated 1 page of ram\n0x%p\n", out);
+	
 	// get the other pages
 	if (page_num == 1) return out; // if they just wanted that page then just return.
 	// If it is consecutive, then we can just use a simple trick.
@@ -212,7 +213,7 @@ struct allocated_pages* alloc(uint8_t page_num, bool consecutive) {
 					printf("I ate the ram.\nI'm kidding. We're out of fucking ram.\nReturning NULL. It's the caller's job now.\n");
 					return NULL;
 				} else {
-					printf("Went around once. i = %dl\nbitmap_size = %dl\n", i, bitmap_size);
+					// printf("Went around once. i = %dl\nbitmap_size = %dl\n", i, bitmap_size);
 					gone_around = true;
 					i = 0;
 				}

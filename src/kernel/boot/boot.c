@@ -10,6 +10,7 @@
 #include <serial.h>
 #include <stdarg.h>
 #include <asm.h>
+#include <paging.h>
 
 __attribute__((used, section(".limine_requests")))
 static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(6);
@@ -213,17 +214,20 @@ void bootup(void) {
     
     wrmsr(0xC0000102, (uint64_t) kernel_data); // IA32_KERNEL_GS_BASE
     printf("The amount of physical address bits we have are %udb\n", check_phys_addr_size());
-    kernel_data[5] = check_phys_addr_size;
+    kernel_data[5] = (uint64_t) check_phys_addr_size();
 
     { // Setup PAT and in an area the compiler will reclaim.
-        uint8_t temp[8] = {6, 4, 0, 5, 6, 0, 0};
+        uint8_t temp[8] = {0, 4, 6, 5, 6, 1, 0};
         uint64_t val;
         memcpy(&val, temp, 8);
         wrmsr(0x277, val);
     }
     printf("We have setup PAT.\n");
 
-    
+    void* page_map = make_page_map(kernel_data);
+    printf("Successfully created a page map!\n0x%uxl\n", (uint64_t) page_map);
+    switch_page_map(page_map, hhdm);
+    printf("We successfully changed our page map!\n");
 
     bootup_cont();
 }
