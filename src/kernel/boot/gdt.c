@@ -91,10 +91,13 @@ struct TSS_entry tss __attribute__((aligned(16))) = {0};
 extern void set_gdt(uint16_t limit, uint64_t base);
 void create_gdt() {
 	uint8_t* target = alloc_page();
+    printf("Greetings\n");
 	memset(target, 0, 0x1000); // Clear the page, and by extension, create a null segment
+    printf("Greetings\n");
 	struct GDT source;
     source.limit = 0;
     source.base = 0;
+
 
 	source.access_byte = 0b10011011; // 0x9B Ring 0 Code Segment
 	source.flags = 0x2; // Long Mode

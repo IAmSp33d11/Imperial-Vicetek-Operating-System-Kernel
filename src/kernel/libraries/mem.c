@@ -57,7 +57,7 @@ uint64_t get_usable_ram(struct limine_memmap_response *memmap) {
 void* create_bitmap(struct limine_memmap_response *memmap, uint64_t high, uint16_t *best_fit_used) {
 	bitmap_size = ((get_highest_usable(memmap) + 4095) / 4096);
 	uint64_t size = ((((bitmap_size + 7) / 8) + 4095) / 4096); // Gets the amount of pages we will need for the bitmap
-	printf("size = %dl\nHighest usable = %dl\nHighest usable in MiB = %f\n", bitmap_size, get_highest_usable(memmap), bytes_to_mib(get_highest_usable(memmap)));
+	printf("size = %dl\nHighest usable = %dl\n", bitmap_size, get_highest_usable(memmap));
 	// Find a viable place to put the bitmap
 	uint16_t best_fit = UINT16_MAX; // The entry with the best fit. Set to largest value by default
 	uint64_t best_fit_size = UINT64_MAX; // Set the best fit size to the largest value, so that the first one we find will always be better

@@ -102,8 +102,8 @@ void bootup(void) {
         fill(framebuffer, 0x00FF0000);
         hcf();
     }
-
-    enable_sse();
+    
+    // enable_sse();
 
 
 
@@ -155,13 +155,13 @@ void bootup(void) {
     enable_shit();
 
 
-    uint64_t ram = get_total_ram(memmap_response);
+    // uint64_t ram = get_total_ram(memmap_response);
     
-    double mib = bytes_to_mib(ram);
-    printf("Total ram: %f MiB\n", mib);
-    ram = get_usable_ram(memmap_response);
-    mib = bytes_to_mib(ram);
-    printf("Usable ram: %f MiB\n", mib);
+    // double mib = bytes_to_mib(ram);
+    // printf("Total ram: %f MiB\n", mib);
+    // ram = get_usable_ram(memmap_response);
+   //  mib = bytes_to_mib(ram);
+    // printf("Usable ram: %f MiB\n", mib);
 
 
     // prepare a second stack (this will not be freed)

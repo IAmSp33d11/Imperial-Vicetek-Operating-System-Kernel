@@ -9,10 +9,11 @@ BIOS ?= /usr/share/edk2/x64/OVMF.4m.fd
 BUILD := build
 
 CFLAGS := -Wall -Wextra -O2 -std=c11 -ffreestanding -g \
-           -fno-stack-protector -fno-stack-check -fno-lto -fno-pic -fno-pie \
+           -fno-stack-protector -fno-stack-check -fno-lto -fno-pic -fno-pie -mno-sse \
            -m64 -march=x86-64 -mabi=sysv \
            -mno-red-zone \
-           -mcmodel=kernel -Isrc/kernel/include -fstack-protector-all
+           -mcmodel=kernel -Isrc/kernel/include -fstack-protector-all \
+		   -mgeneral-regs-only
 
 LDFLAGS := -m elf_x86_64 -nostdlib -static -z max-page-size=0x1000 -T linker.lds
 

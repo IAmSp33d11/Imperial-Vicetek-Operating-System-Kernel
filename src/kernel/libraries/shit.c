@@ -142,6 +142,8 @@ void sitoa_hex(int64_t n, char s[]) {
     reverse(s);
 }
 
+
+/*
 // Ironically this function was drain bamaged for a little while
 void dtoa(double d, int precision, char *str) {
     int     int_part;
@@ -175,7 +177,7 @@ double bytes_to_mib(uint64_t bytes) {
     double mib = kib / 1024.0;
     return mib;
 }
-
+*/
 void reverse(char s[]) {
     int i, j;
     char c;

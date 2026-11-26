@@ -80,10 +80,12 @@ void printf(char *string, ...) {
 					write_serial(buffer);
 				}
 			} else if (current_char == 'f') {
-				double val = va_arg(args, double);
-				char buffer[128];
-				dtoa(val, 8, buffer);
-				write_serial(buffer);
+				write_serial("\n\nFATAL ERROR: CALLER ATTEMPTED TO PRINT A FLOAT. KILL THEM!\n");
+				hcf();
+				// double val = va_arg(args, double);
+				// char buffer[128];
+				// dtoa(val, 8, buffer);
+				// write_serial(buffer);
 			} else if (current_char == 'u') { // Unsigned ones!
 				current_char = string[i++];
 				if (current_char == 'x') {
