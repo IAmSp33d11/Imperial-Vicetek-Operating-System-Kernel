@@ -2,8 +2,7 @@
 
 .section .text
 .global syscall_stub
-# void syscall(uint64_t rax, uint64_t rbx)
-# This just is a syscall stub, duh.
+# void syscall(uint64_t rax, uint64_t rbx, uint64_t r12, uint64_t rdx)# This just is a syscall stub, duh.
 syscall_stub:
 	swapgs
 
@@ -24,7 +23,11 @@ syscall_stub:
 	movq %rax, %rdi # Move the arguments so GCC will recognize them
 	movq %rbx, %rsi
 
-	call printf
+	pushq %rdx # Musical Chairs yay
+	movq %r12, %rdx
+	popq %rcx
+
+	call syscall
 
 	
 

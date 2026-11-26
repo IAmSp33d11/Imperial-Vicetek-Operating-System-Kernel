@@ -7,3 +7,4 @@ limine/
 out/
 iso_root/
 local_info/
+copy_to_iso/*
