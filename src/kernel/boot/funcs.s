@@ -67,6 +67,8 @@ reload_segments:
 enable_shit:
 	ret
 
+
+# I FINALLY KILLED IT. HELL YEAH.
 .global enable_sse
 # void enable_sse(void);
 enable_sse: # I had to seperate this from the check_shit and enable_shit functions since
