@@ -219,3 +219,12 @@ uint8_t get_cpl(void) {
     __asm__ volatile ("mov %%cs, %0" : "=r"(cs));
     return (uint8_t) cs & 0x3;
 }
+
+// libc things (with credit)
+
+// (https://github.com/esmil/musl/blob/master/src/string/strcmp.c)
+int strcmp(const char *l, const char *r)
+{
+	for (; *l==*r && *l; l++, r++);
+	return *(unsigned char *)l - *(unsigned char *)r;
+}

@@ -32,4 +32,7 @@ void reverse(char s[]);
 char* get_cpu_name(void);
 uint8_t get_cpl(void);
 
+// LIBC BS
+int strcmp(const char *l, const char *r);
+
 #endif

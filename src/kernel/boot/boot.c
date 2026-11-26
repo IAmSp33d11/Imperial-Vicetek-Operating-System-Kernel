@@ -11,6 +11,7 @@
 #include <stdarg.h>
 #include <asm.h>
 #include <paging.h>
+#include <elf.h>
 
 __attribute__((used, section(".limine_requests")))
 static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(6);
@@ -44,6 +45,11 @@ static volatile struct limine_executable_address_request addr_request = {
     .revision = 0
 };
 
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_module_request module_request = {
+    .id = LIMINE_MODULE_REQUEST_ID,
+    .revision = 0
+};
 
 
 __attribute__((used, section(".limine_requests_start")))
@@ -66,7 +72,7 @@ extern uint8_t check_phys_addr_size(void); // src/kernel/boot/funcs.s
 __attribute__((noreturn))
 void bootup(void);
 __attribute__((noreturn))
-void bootup_cont(void); 
+void bootup_cont(uint64_t* kernel_data); 
 
 
 
@@ -106,15 +112,14 @@ void bootup(void) {
     // enable_sse();
 
 
-
-    // TODO : Load init later
-    /*
+    void* init_addr;
     for (uint64_t i = 0; i < module_request.response->module_count; i++) {
         struct limine_file *file = module_request.response->modules[i];
-
-
+        if (strcmp(file->path, "INIT")) {
+            init_addr = file->address;
+            continue;
+        }
     }
-    */
     
     void *bitmap;
     { // Force gcc to make temp go out of scope
@@ -215,6 +220,7 @@ void bootup(void) {
     wrmsr(0xC0000102, (uint64_t) kernel_data); // IA32_KERNEL_GS_BASE
     printf("The amount of physical address bits we have are %udb\n", check_phys_addr_size());
     kernel_data[5] = (uint64_t) check_phys_addr_size();
+    kernel_data[6] = (uint64_t) init_addr;
 
     { // Setup PAT and in an area the compiler will reclaim.
         uint8_t temp[8] = {0, 4, 6, 5, 6, 1, 0};
@@ -229,12 +235,14 @@ void bootup(void) {
     switch_page_map(page_map, hhdm);
     printf("We successfully changed our page map!\n");
 
-    bootup_cont();
+    bootup_cont(kernel_data);
 }
 
 
-void bootup_cont(void) {
+void bootup_cont(uint64_t* kernel_data) {
     struct limine_framebuffer *framebuffer = framebuffer_request.response->framebuffers[0];
     fill(framebuffer, 0x00ffc5de);
+
+    printf("Checking if init.elf is valid!\n%s\n", (check_elf_validity((void*) kernel_data[6])) ? "It is valid!\n" : "It is not valid!\n");
     hcf();
 }
